@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Goal Tracker</title>
+    
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons or FontAwesome for modern visual UI cues -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Local Sleek Glassmorphic Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    
+    <!-- Canvas Confetti CDN for beautiful celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body class="dark-theme">
+
+    <!-- Glowing Background blobs for rich premium look -->
+    <div class="glow-bg-blob blob-purple"></div>
+    <div class="glow-bg-blob blob-indigo"></div>
+
+    <div class="app-container">
+        
+        <!-- ==================== SIDEBAR / CONTROL PANEL ==================== -->
+        <aside class="sidebar glass-panel">
+            <header class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-book-open logo-icon"></i>
+                    <h1>Reading<span>Goal Tracker</span></h1>
+                </div>
+                <div class="status-badge" id="pdf-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">No File Loaded</span>
+                </div>
+            </header>
+
+            <!-- Goal Setup Form (Visible when goal is not set or editing) -->
+            <section class="widget goal-setup-widget" id="goal-setup-section">
+                <div class="widget-header">
+                    <i class="fa-solid fa-bullseye section-icon"></i>
+                    <h2>Set Your Daily Goal</h2>
+                </div>
+                
+                <div class="natural-input-box">
+                    <p>I want to read <input type="number" id="goal-pages" value="100" min="1" class="inline-input"> pages today,</p>
+                    <p>from page <input type="number" id="goal-start" value="201" min="1" class="inline-input"> to page <span class="calc-end" id="goal-end-preview">300</span>.</p>
+                </div>
+                
+                <div class="or-divider">
+                    <span>OR ENTER TEXT</span>
+                </div>
+
+                <div class="text-input-field">
+                    <label for="goal-text-input"><i class="fa-solid fa-keyboard"></i> Smart Goal Entry</label>
+                    <input type="text" id="goal-text-input" placeholder="e.g. 100 from 201-300" class="full-width-input">
+                    <small class="helper-text">Type your goal naturally, we'll parse it instantly.</small>
+                </div>
+
+                <button id="activate-goal-btn" class="btn btn-primary btn-full">
+                    <i class="fa-solid fa-play"></i> Start Tracking
+                </button>
+            </section>
+
+            <!-- Active Goal Dashboard (Visible once goal is set) -->
+            <section class="widget active-dashboard-widget hidden" id="active-dashboard-section">
+                <div class="widget-header">
+                    <i class="fa-solid fa-chart-line section-icon"></i>
+                    <h2>Reading Progress</h2>
+                </div>
+
+                <div class="remaining-box">
+                    <span class="remaining-number" id="remaining-count">100</span>
+                    <span class="remaining-label">pages left</span>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar-outer">
+                        <div class="progress-bar-inner" id="progress-bar"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <span id="progress-percent">0%</span>
+                        <span id="progress-fraction">0 / 100 pages</span>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-current-page">0</span>
+                        <span class="stat-label">Current Page</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-target-page">0</span>
+                        <span class="stat-label">Goal Target</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-actions">
+                    <button id="prev-page-btn-sidebar" class="btn btn-secondary flex-1" title="Previous Page (Left Arrow)">
+                        <i class="fa-solid fa-arrow-left"></i> Prev
+                    </button>
+                    <button id="next-page-btn-sidebar" class="btn btn-primary flex-2" title="Next Page (Right Arrow / Space)">
+                        Next <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+                
+                <button id="reset-goal-btn" class="btn btn-tertiary btn-full">
+                    <i class="fa-solid fa-arrows-rotate"></i> Change Goal
+                </button>
+            </section>
+
+            <!-- Tips & shortcuts -->
+            <footer class="sidebar-footer">
+                <h3><i class="fa-solid fa-circle-info"></i> Navigation Tips</h3>
+                <ul>
+                    <li><kbd class="key-badge">←</kbd> / <kbd class="key-badge">→</kbd> Navigate pages</li>
+                    <li><kbd class="key-badge">Space</kbd> Next Page</li>
+                    <li><kbd class="key-badge">Scroll</kbd> Smooth page turns</li>
+                </ul>
+            </footer>
+        </aside>
+
+        <!-- ==================== MAIN PDF VIEWER PANEL ==================== -->
+        <main class="viewer-container glass-panel">
+            <!-- Custom toolbar for PDF controls -->
+            <div class="viewer-toolbar" id="viewer-toolbar-el">
+                <div class="toolbar-left">
+                    <span class="file-name-display" id="file-name-text">No document opened</span>
+                    <button id="toolbar-open-pdf-btn" class="btn btn-secondary" style="padding: 6px 12px; font-size: 11px; margin-left: 12px; border-radius: 8px; height: 28px;" title="Open another PDF">
+                        <i class="fa-solid fa-folder-open"></i> Change PDF
+                    </button>
+                    <input type="file" id="toolbar-file-input" accept="application/pdf" class="hidden-file-input">
+                </div>
+                
+                <div class="toolbar-center">
+                    <button id="zoom-out-btn" class="toolbar-btn" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                    <span class="zoom-text" id="zoom-factor">100%</span>
+                    <button id="zoom-in-btn" class="toolbar-btn" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                    <div class="toolbar-divider"></div>
+                    <button id="fit-width-btn" class="toolbar-btn" title="Fit to Width"><i class="fa-solid fa-arrows-left-right"></i></button>
+                </div>
+
+                <div class="toolbar-right">
+                    <span class="page-indicator">
+                        Page <span id="current-page-num">0</span> of <span id="total-pages-num">0</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Upload/Drag-and-Drop Area (Visible if no PDF is preloaded) -->
+            <div class="upload-area" id="upload-area-el">
+                <div class="upload-box-dashed">
+                    <i class="fa-solid fa-file-pdf upload-icon"></i>
+                    <h2>Open a PDF Document</h2>
+                    <p class="upload-subtitle">Drag and drop your PDF file here, or click to browse</p>
+                    <input type="file" id="file-input" accept="application/pdf" class="hidden-file-input">
+                    <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+                        <i class="fa-solid fa-folder-open"></i> Choose File
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main canvas PDF renderer viewport -->
+            <div class="pdf-scroll-viewport hidden" id="pdf-viewport-el">
+                <div class="pdf-canvas-container" id="canvas-container">
+                    <canvas id="pdf-render-canvas"></canvas>
+                </div>
+            </div>
+            
+            <!-- Loading Indicator overlay -->
+            <div class="loading-overlay hidden" id="loading-overlay-el">
+                <div class="spinner"></div>
+                <p>Rendering high-fidelity page textures...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== CELEBRATION MODAL ==================== -->
+    <div class="celebration-overlay hidden" id="celebration-overlay-el">
+        <div class="celebration-card glass-panel">
+            <div class="trophy-icon-wrapper">
+                <i class="fa-solid fa-trophy trophy-icon"></i>
+            </div>
+            <h2>Goal Accomplished!</h2>
+            <p>Outstanding! You completed your reading goal for today by reaching your target page.</p>
+            <div class="celebration-stats">
+                <div class="cel-stat">
+                    <span class="cel-value" id="cel-total-pages">100</span>
+                    <span class="cel-label">Pages Read</span>
+                </div>
+                <div class="cel-stat">
+                    <span class="cel-value" id="cel-ending-page">300</span>
+                    <span class="cel-label">Ending Page</span>
+                </div>
+            </div>
+            <button id="dismiss-celebration-btn" class="btn btn-primary btn-full">
+                <i class="fa-solid fa-thumbs-up"></i> Keep Reading!
+            </button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
